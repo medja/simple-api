@@ -61,7 +61,7 @@ class api
 	
 	private static function make($data)
 	{
-		if (is_numeric($data)) return array('status' => $data);
+		if (is_int($data) && $data > 399 && $data < 416) return array('status' => $data);
 		if (is_object($data)) $data = (array)$data;
 		if (!is_array($data)) $data = array($data);
 		else if (isset($data['status']) && isset($data['response'])) return $data;
