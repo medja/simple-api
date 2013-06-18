@@ -24,11 +24,16 @@ class api
 	
 	public function match($url)
 	{
-		if (!preg_match_all('/^\/?' .  preg_replace_callback('/\\\{([^\}]+)\}/i', function($matches) {
-			$parts = explode('\\', substr($matches[1], 0, -1));
-			return '(' . $this->where[$parts[0]] . ')' . (isset($parts[1]) ? '?' : '');
-		}, preg_quote($this->regex, '/')) . '\/?$/i', $url, $matches, PREG_SET_ORDER)) return false;
-		$this->data = array_slice($matches[0], 1);
+		if (!preg_match_all('/^' .  preg_replace_callback('/(\\\?.)\\\{([^\}]+)\}/i', function($matches) {
+			$parts = explode('\\', substr($matches[2], 0, -1));
+			$optional = isset($parts[1]);
+			return ($optional && $matches[1] != '?' ? ('(' . $matches[1] . '|' . $matches[1]) : ($matches[1] . '('))
+				. '(' . $this->where[$parts[0]]. '))' . ($optional ? '?' : '');
+		}, '\/?' . preg_quote($this->regex, '/')) . '\/?$/i', $url, $matches, PREG_SET_ORDER)) return false;
+		$this->data = array();
+		$count = count($matches[0]);
+		for ($i = 2; $i < $count; $i += 2)
+			$this->data[] = $matches[0][$i];
 		return true;
 	}
 	
