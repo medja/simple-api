@@ -2,7 +2,7 @@
 
 class api
 {
-	private $regex, $data, $callback, $middleware, $where = array();
+	private $regex, $data, $callback, $middleware, $where = array(), $keys = null;
 	
 	public function __construct($regex, $callback, $middleware = array())
 	{
@@ -17,7 +17,7 @@ class api
 	public function where($name, $regex)
 	{
 		if (!isset($this->where[$name]))
-			throw new Exception('Parameter not defined');
+			throw new Exception('Parameter not defined!');
 		$this->where[$name] = $regex;
 		return $this;
 	}
@@ -37,16 +37,35 @@ class api
 		return true;
 	}
 	
+	private function invoke($function)
+	{
+		$info = new ReflectionFunction($function);
+		if ($this->keys == null)
+			$keys = array_keys($this->where);
+		$args = array();
+		foreach ($info->getParameters() as $parameter)
+		{
+			$i = array_search($parameter->name, $keys);
+			if ($i === false) throw new Exception('Parameter not defined!');
+			if (empty($this->data[$i])) {
+				if (!$parameter->isDefaultValueAvailable())
+					throw new Exception('Parameter not defined!');
+				$args[] = $parameter->getDefaultValue();
+			} else $args[] = $this->data[$i];
+		}
+		return $info->invokeArgs($args);
+	}
+	
 	public function execute()
 	{
 		foreach ($this->middleware as $middleware)
 		{
 			if (is_bool($middleware)) {
 				if (!$middleware) return array('status' => 401);
-			} else if (!call_user_func_array($middleware, $this->data))
+			} else if (!$this->invoke($middleware))
 				return array('status' => 401);
 		}
-		return self::make(call_user_func_array($this->callback, $this->data));
+		return self::make($this->invoke($this->callback));
 	}
 	
 	private static $listeners = array(), $called = false;
