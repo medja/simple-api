@@ -34,11 +34,11 @@ class api
 		$this->keys = array_keys($this->where);
 		foreach ($this->info->getParameters() as $key => $parameter)
 		{
-			$i = 2 * ($key + 1);
+			$i = 2 * (array_search($parameter->name, $this->keys) + 1);
 			if (empty($matches[0][$i])) {
 				if (!$parameter->isDefaultValueAvailable())
 					return false;
-				$this->defaults[] = $keys[$key];
+				$this->defaults[] = $this->keys[$key];
 				$this->data[] = $parameter->getDefaultValue();
 			}
 			else $this->data[] = $matches[0][$i];
