@@ -2,7 +2,7 @@
 
 class api
 {
-	private $regex, $data, $callback, $middleware, $where = array(), $keys = null;
+	private $regex, $data, $defaults, $callback, $info, $middleware, $where = array(), $keys;
 	
 	public function __construct($regex, $callback, $middleware = array())
 	{
@@ -24,34 +24,39 @@ class api
 	
 	public function match($url)
 	{
-		if (!preg_match_all('/^' .  preg_replace_callback('/(\\\?.)\\\{([^\}]+)\}/i', function($matches) {
-			$parts = explode('\\', substr($matches[2], 0, -1));
-			$optional = isset($parts[1]);
-			return ($optional && $matches[1] != '?' ? ('(' . $matches[1] . '|' . $matches[1]) : ($matches[1] . '('))
-				. '(' . $this->where[$parts[0]]. '))' . ($optional ? '?' : '');
+		if (!preg_match_all('/^' .  preg_replace_callback('/(\\\?.)\\\{([^\}]+)\\\}/i', function($matches) {
+			return ($matches[1] != '?' ? ('(' . $matches[1] . '|' . $matches[1]) : ($matches[1] . '('))
+				. '(' . $this->where[$matches[2]]. '))?';
 		}, '\/?' . preg_quote($this->regex, '/')) . '\/?$/i', $url, $matches, PREG_SET_ORDER)) return false;
 		$this->data = array();
-		$count = count($matches[0]);
-		for ($i = 2; $i < $count; $i += 2)
-			$this->data[] = $matches[0][$i];
+		$this->defaults = array();
+		$this->info = new ReflectionFunction($this->callback);
+		$this->keys = array_keys($this->where);
+		foreach ($this->info->getParameters() as $key => $parameter)
+		{
+			$i = 2 * ($key + 1);
+			if (empty($matches[0][$i])) {
+				if (!$parameter->isDefaultValueAvailable())
+					return false;
+				$this->defaults[] = $keys[$key];
+				$this->data[] = $parameter->getDefaultValue();
+			}
+			else $this->data[] = $matches[0][$i];
+		}
 		return true;
 	}
 	
 	private function invoke($function)
 	{
 		$info = new ReflectionFunction($function);
-		if ($this->keys == null)
-			$keys = array_keys($this->where);
 		$args = array();
 		foreach ($info->getParameters() as $parameter)
 		{
-			$i = array_search($parameter->name, $keys);
+			$i = array_search($parameter->name, $this->keys);
 			if ($i === false) throw new Exception('Parameter not defined!');
-			if (empty($this->data[$i])) {
-				if (!$parameter->isDefaultValueAvailable())
-					throw new Exception('Parameter not defined!');
+			if (in_array($parameters->name, $this->defaults) && $parameter->isDefaultValueAvailable())
 				$args[] = $parameter->getDefaultValue();
-			} else $args[] = $this->data[$i];
+			else $args[] = $this->data[$i];
 		}
 		return $info->invokeArgs($args);
 	}
@@ -65,7 +70,7 @@ class api
 			} else if (!$this->invoke($middleware))
 				return array('status' => 401);
 		}
-		return self::make($this->invoke($this->callback));
+		return self::make($this->info->invokeArgs($this->data));
 	}
 	
 	private static $listeners = array(), $called = false;
