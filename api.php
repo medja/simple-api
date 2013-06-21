@@ -66,7 +66,7 @@ class api
 		foreach ($this->middleware as $middleware)
 		{
 			$result = $this->invoke($middleware);
-			if (self::$response != 200 || $result && $result !== true) return $result;
+			if (self::$response != null || $result && $result !== true) return $result;
 		}
 		return $this->info->invokeArgs($this->data);
 	}
