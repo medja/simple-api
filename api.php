@@ -65,24 +65,19 @@ class api
 	{
 		foreach ($this->middleware as $middleware)
 		{
-			if (is_bool($middleware)) {
-				if (!$middleware) return array("status" => 401);
-			} else if (!$this->invoke($middleware))
-				return array("status" => 401);
+			$result = $this->invoke($middleware);
+			if (self::$response != 200 || $result && $result !== true) return $result;
 		}
-		return self::make($this->info->invokeArgs($this->data));
+		return $this->info->invokeArgs($this->data);
 	}
 	
-	private static $listeners = array(), $called = false;
+	private static $listeners = array(), $response = null, $called = false;
 	
 	public static function &__callStatic($name, $args)
 	{
 		$cargs = count($args);
-		if ($cargs < 2 || !is_string($args[0]) || !is_callable($args[$cargs - 1]))
+		if ($cargs < 2)
 			throw new Exception("Invlaid argument format!");
-		for ($i = 0; $i < $cargs - 2; $i++)
-			if (!(is_bool($args[$i] || is_callable($args[$i]))))
-				throw new Exception("Invlaid argument format!");
 		$listener = new self($args[0], $args[$cargs - 1], array_slice($args, 1, -1));
 		self::$listeners[strtolower($name)][] = $listener;
 		return $listener;
@@ -90,21 +85,18 @@ class api
 	
 	private static function make($data)
 	{
-		if (is_int($data) && $data > 399 && $data < 416) return array("status" => $data);
-		if (is_object($data)) $data = (array)$data;
-		if (!is_array($data)) $data = array($data);
-		else if (isset($data["status"]) && isset($data["response"])) return $data;
-		return array("status" => 200, "response" => $data);
+		if ($data === null || is_bool($data)) return null;
+		if (is_array($data) || is_object($data)) return $data;
+		return array($data);
 	}
 	
 	private static function emit($url, $method)
 	{
-		if (!isset(self::$listeners[$method]) || !is_array(self::$listeners[$method]))
-			return array("status" => 404);
-		foreach(self::$listeners[$method] as $listener)
-			if ($listener->match($url))
-				return $listener->execute();
-		return array("status" => 404);
+		if (isset(self::$listeners[$method]))
+			foreach(self::$listeners[$method] as $listener)
+				if ($listener->match($url))
+					return self::make($listener->execute());
+		self::$response = "404";
 	}
 	
 	private static $paths = array("PATH_INFO", "ORIG_PATH_INFO", "REQUEST_URI", "SCRIPT_NAME"
@@ -123,10 +115,16 @@ class api
 		if ($method == null) $method = $_SERVER["REQUEST_METHOD"];
 		$method = strtolower($method);
 		$output = self::emit($url, $method);
-		http_response_code($output["status"]);
+		if (self::$response == null) http_response_code(200);
+		else if (is_numeric(self::$response)) http_response_code(self::$response);
+		else header(self::$response);
 		header("Content-Type: application/json; charset=utf-8");
-		if (isset($output["response"]))
-			echo json_encode($output["response"]);
+		if ($output != null) echo json_encode($output);
+	}
+	
+	public static function response($code)
+	{
+		self::$response = $code;
 	}
 }
 
