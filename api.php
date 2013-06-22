@@ -1,16 +1,48 @@
 <?php
 
+class method
+{
+	private $info, $method = true;
+
+	public function __construct($method)
+	{
+		if (is_string($method) && ($i = strpos($method, '::')) !== false)
+			$this->info = new ReflectionMethod(substr($method, 0, $i), substr($method, $i + 2));
+		else if (is_array($method))
+			$this->info = new ReflectionMethod($method[0], $method[1]);
+		else {
+			$this->info = new ReflectionFunction($method);
+			$this->method = false;
+		}
+	}
+
+	public function parameters()
+	{
+		return $this->info->getParameters();
+	}
+
+	public function invoke($args)
+	{
+		if ($this->method)
+			return $this->info->invokeArgs(null, $args);
+		return $this->info->invokeArgs($args);
+	}
+}
+
 class api
 {
-	private $regex, $data, $defaults, $callback, $info, $middleware, $where = array(), $keys;
+	private $regex, $data, $defaults, $callback, $middleware, $where = array(), $keys = array();
 	
-	public function __construct($regex, $callback, $middleware = array())
+	private function __construct($regex, $callback, $middleware = array())
 	{
 		$this->regex = $regex;
-		if (preg_match_all('/\{([\w\_]+)[\?]?\}/', $regex, $matches))
-			foreach ($matches[1] as $match)
+		if (preg_match_all('/\{([\w\_]+)[\?]?\}/', $regex, $matches)) {
+			foreach ($matches[1] as $match) {
+				$this->keys[] = $match;
 				$this->where[$match] = '.+';
-		$this->callback = $callback;
+			}
+		}
+		$this->callback = new method($callback);
 		$this->middleware = $middleware;
 	}
 	
@@ -30,27 +62,22 @@ class api
 		}, '\/?' . preg_quote($this->regex, '/')) . '\/?$/i', $url, $matches, PREG_SET_ORDER)) return false;
 		$this->data = array();
 		$this->defaults = array();
-		$this->info = new ReflectionFunction($this->callback);
-		$this->keys = array_keys($this->where);
-		foreach ($this->info->getParameters() as $key => $parameter)
+		foreach ($this->callback->parameters() as $key => $parameter)
 		{
 			$i = 2 * (array_search($parameter->name, $this->keys) + 1);
 			if (empty($matches[0][$i])) {
-				if (!$parameter->isDefaultValueAvailable())
-					return false;
-				$this->defaults[] = $this->keys[$key];
+				if (!$parameter->isDefaultValueAvailable()) return false;
+				$this->defaults[] = $parameter->name;
 				$this->data[] = $parameter->getDefaultValue();
-			}
-			else $this->data[] = $matches[0][$i];
+			} else $this->data[] = $matches[0][$i];
 		}
 		return true;
 	}
 	
 	private function invoke($function)
 	{
-		$info = new ReflectionFunction($function);
 		$args = array();
-		foreach ($info->getParameters() as $parameter)
+		foreach ($function->parameters() as $parameter)
 		{
 			$i = array_search($parameter->name, $this->keys);
 			if ($i === false) throw new Exception('Parameter not defined!');
@@ -58,17 +85,17 @@ class api
 				$args[] = $parameter->getDefaultValue();
 			else $args[] = $this->data[$i];
 		}
-		return $info->invokeArgs($args);
+		return $function->invoke($args);
 	}
 	
 	public function execute()
 	{
 		foreach ($this->middleware as $middleware)
 		{
-			$result = $this->invoke($middleware);
+			$result = $this->invoke(new method($middleware));
 			if (self::$response != null || $result && $result !== true) return $result;
 		}
-		return $this->info->invokeArgs($this->data);
+		return $this->callback->invoke($this->data);
 	}
 	
 	private static $listeners = array(), $response = null, $called = false;
@@ -76,8 +103,7 @@ class api
 	public static function &__callStatic($name, $args)
 	{
 		$cargs = count($args);
-		if ($cargs < 2)
-			throw new Exception('Invlaid argument format!');
+		if ($cargs < 2) throw new Exception('Invlaid argument format!');
 		$listener = new self($args[0], $args[$cargs - 1], array_slice($args, 1, -1));
 		self::$listeners[strtolower($name)][] = $listener;
 		return $listener;
