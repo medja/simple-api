@@ -57,9 +57,9 @@ class api
 	public function match($url)
 	{
 		if (!preg_match_all('/^' .  preg_replace_callback('/(\\\?.)\\\{([^\}]+)\\\}/i', function($matches) {
-			return ($matches[1] != '?' ? ('(' . $matches[1] . '|' . $matches[1]) : ($matches[1] . '('))
+			return ($matches[1] != '' ? ('(' . $matches[1] . '|' . $matches[1]) : ($matches[1] . '('))
 				. '(' . $this->where[$matches[2]]. '))?';
-		}, '\/?' . preg_quote($this->regex, '/')) . '\/?$/i', $url, $matches, PREG_SET_ORDER)) return false;
+		}, preg_quote($this->regex, '/')) . '$/i', $url, $matches, PREG_SET_ORDER)) return false;
 		$this->data = array();
 		$this->defaults = array();
 		foreach ($this->callback->parameters() as $key => $parameter)
@@ -140,7 +140,7 @@ class api
 		if ($url == null) $url = self::url();
 		if ($method == null) $method = $_SERVER['REQUEST_METHOD'];
 		$method = strtolower($method);
-		$output = self::emit($url, $method);
+		$output = self::emit(trim($url, '/'), $method);
 		if (self::$response == null) http_response_code(200);
 		else if (is_numeric(self::$response)) http_response_code(self::$response);
 		else header(self::$response);
