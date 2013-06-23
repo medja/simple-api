@@ -93,8 +93,10 @@ class api
 		foreach ($this->middleware as $middleware)
 		{
 			$result = $this->invoke(new method($middleware));
-			if (self::$response != null || $result === false || $result && $result !== true)
+			if (self::$response != null || $result === false || $result && $result !== true) {
+				if (self::$response == null) self::$response = 400;
 				return $result;
+			}
 		}
 		return $this->callback->invoke($this->data);
 	}
