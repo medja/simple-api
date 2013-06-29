@@ -148,7 +148,7 @@ class api
 		else if (is_numeric(self::$response)) http_response_code(self::$response);
 		else header(self::$response);
 		header('Content-Type: application/json; charset=utf-8');
-		if ($output != null) echo json_encode($output);
+		if ($output !== null) echo json_encode($output);
 	}
 	
 	public static function response($code)
