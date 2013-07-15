@@ -54,12 +54,16 @@ class api
 		return $this;
 	}
 	
+	private function preg_callback($matches)
+	{
+		return ($matches[1] != '' ? ('(' . $matches[1] . '|' . $matches[1]) : ($matches[1] . '('))
+			. '(' . $this->where[$matches[2]]. '))?';
+	}
+
 	public function match($url)
 	{
-		if (!preg_match_all('/^' .  preg_replace_callback('/(\\\?.)\\\{([^\}]+)\\\}/i', function($matches) {
-			return ($matches[1] != '' ? ('(' . $matches[1] . '|' . $matches[1]) : ($matches[1] . '('))
-				. '(' . $this->where[$matches[2]]. '))?';
-		}, preg_quote($this->regex, '/')) . '$/i', $url, $matches, PREG_SET_ORDER)) return false;
+		if (!preg_match_all('/^' .  preg_replace_callback('/(\\\?.)\\\{([^\}]+)\\\}/i', array($this, 'preg_callback'),
+			preg_quote($this->regex, '/')) . '$/i', $url, $matches, PREG_SET_ORDER)) return false;
 		$this->data = array();
 		$this->defaults = array();
 		foreach ($this->callback->parameters() as $key => $parameter)
