@@ -81,8 +81,10 @@ namespace
 
 		public function match($url)
 		{
-			if (!preg_match_all('/^' .  preg_replace_callback('/(\\\?.)\\\{([^\}]+)\\\}/i', array($this, 'preg_callback'),
-				preg_quote($this->regex, '/')) . '$/i', $url, $matches, PREG_SET_ORDER)) return false;
+			if ($this->regex == '*') $matches = array(array());
+			else if (!preg_match_all('/^' .  preg_replace_callback('/(\\\?.)\\\{([^\}]+)\\\}/i',
+				array($this, 'preg_callback'), preg_quote($this->regex, '/')) . '$/i',
+				$url, $matches, PREG_SET_ORDER)) return false;
 			$this->data = array();
 			$this->defaults = array();
 			foreach ($this->callback->parameters() as $key => $parameter)
