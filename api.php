@@ -151,7 +151,8 @@ namespace
 					if ($listener->match($url))
 						return self::make($listener->execute());
 			self::$response = '404';
-			return self::make(null);
+			if ($method == 'all') return self::make(null);
+			return self::emit($url, 'all');
 		}
 		
 		private static $paths = array('PATH_INFO', 'ORIG_PATH_INFO', 'REQUEST_URI', 'SCRIPT_NAME'
@@ -168,8 +169,7 @@ namespace
 			self::$called = true;
 			if ($url == null) $url = self::url();
 			if ($method == null) $method = $_SERVER['REQUEST_METHOD'];
-			$method = strtolower($method);
-			$output = self::emit(trim($url, '/'), $method);
+			$output = self::emit(trim($url, '/'), strtolower($method));
 			if (self::$response == null) http_response_code(200);
 			else if (is_numeric(self::$response)) http_response_code(self::$response);
 			else header(self::$response);
