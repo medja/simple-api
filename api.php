@@ -173,8 +173,10 @@ namespace
 			if (self::$response == null) http_response_code(200);
 			else if (is_numeric(self::$response)) http_response_code(self::$response);
 			else header(self::$response);
+			header('Access-Control-Allow-Origin: *');
 			header('Content-Type: application/json; charset=utf-8');
-			if ($output !== null) echo json_encode($output);
+			$json = json_encode($output);
+			echo empty($_GET['callback']) ? $json : ($_GET['callback'] . '(' . $json . ')');
 		}
 		
 		public static function response($code)
