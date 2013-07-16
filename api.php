@@ -34,6 +34,20 @@ namespace api
 
 namespace
 {
+	if (!function_exists('http_response_code'))
+	{
+		function http_response_code($new = null)
+		{
+			static $code = 200;
+			if($new !== null && !headers_sent())
+			{
+				$code = $new;
+				header('X-PHP-Response-Code: '. $code, true, $code);
+			}
+			return $code;
+		}
+	}
+
 	class api
 	{
 		private $regex, $data, $defaults, $callback, $middleware, $where = array(), $keys = array();
