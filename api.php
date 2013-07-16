@@ -139,7 +139,7 @@ namespace
 		
 		private static function make($data)
 		{
-			if ($data === null || is_bool($data)) return null;
+			if ($data === null || is_bool($data)) return array(null);
 			if (is_array($data) || is_object($data)) return $data;
 			return array($data);
 		}
@@ -151,6 +151,7 @@ namespace
 					if ($listener->match($url))
 						return self::make($listener->execute());
 			self::$response = '404';
+			return self::make(null);
 		}
 		
 		private static $paths = array('PATH_INFO', 'ORIG_PATH_INFO', 'REQUEST_URI', 'SCRIPT_NAME'
