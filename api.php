@@ -126,9 +126,9 @@ namespace
 			return $this->callback->invoke($this->data);
 		}
 		
-		private static $listeners = array(), $response = null, $called = false;
+		private static $listeners = array(), $response = null;
 		
-		public static function &__callStatic($name, $args)
+		public static function __callStatic($name, $args)
 		{
 			$cargs = count($args);
 			if ($cargs < 2) throw new Exception('Invlaid argument format!');
@@ -139,7 +139,7 @@ namespace
 		
 		private static function make($data)
 		{
-			if ($data === null || is_bool($data)) return array(null);
+			if ($data === null || is_bool($data)) return array();
 			if (is_array($data) || is_object($data)) return $data;
 			return array($data);
 		}
@@ -151,8 +151,8 @@ namespace
 					if ($listener->match($url))
 						return self::make($listener->execute());
 			self::$response = '404';
-			if ($method == 'all') return self::make(null);
-			return self::emit($url, 'all');
+			if ($method == 'any') return self::make(null);
+			return self::emit($url, 'any');
 		}
 		
 		private static $paths = array('PATH_INFO', 'ORIG_PATH_INFO', 'REQUEST_URI', 'SCRIPT_NAME'
@@ -163,25 +163,46 @@ namespace
 			foreach (self::$paths as $path) if (!empty($_SERVER[$path])) return $_SERVER[$path];
 		}
 		
-		public static function process($url = null, $method = null)
+		public static function process($url = null)
 		{
-			if (self::$called) return;
-			self::$called = true;
+			static $called = false;
+			if ($called) return;
+			$called = true;
 			if ($url == null) $url = self::url();
-			if ($method == null) $method = $_SERVER['REQUEST_METHOD'];
-			$output = self::emit(trim($url, '/'), strtolower($method));
+			$output = self::emit(trim($url, '/'), strtolower($_SERVER['REQUEST_METHOD']));
 			if (self::$response == null) http_response_code(200);
 			else if (is_numeric(self::$response)) http_response_code(self::$response);
 			else header(self::$response);
 			header('Access-Control-Allow-Origin: *');
-			header('Content-Type: application/json; charset=utf-8');
-			$json = json_encode($output);
-			echo empty($_GET['callback']) ? $json : ($_GET['callback'] . '(' . $json . ')');
+			if (empty($_GET['callback']))
+			{
+				header('Content-Type: application/json; charset=utf-8');
+				echo json_encode($output);
+			}
+			else
+			{
+				header('Content-Type: application/javascript; charset=utf-8');
+				echo $_GET['callback'] . '(' . json_encode($output) . ')';
+			}
 		}
 		
 		public static function response($code)
 		{
 			self::$response = $code;
+		}
+
+		public static function body()
+		{
+			static $body = false;
+			if (!$body)
+			{
+				parse_str(file_get_contents("php://input"), $body);
+				if (empty($body))
+				{
+					$body = $_GET; unset($body['callback']);
+				}
+			}
+			return $body;
 		}
 	}
 
