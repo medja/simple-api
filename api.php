@@ -139,7 +139,7 @@ namespace
 		
 		private static function make($data)
 		{
-			if ($data === null || is_bool($data)) return array();
+			if ($data === null || is_bool($data)) return new stdClass();
 			if (is_array($data) || is_object($data)) return $data;
 			return array($data);
 		}
@@ -196,11 +196,11 @@ namespace
 			static $body = false;
 			if (!$body)
 			{
-				parse_str(file_get_contents("php://input"), $body);
-				if (empty($body))
+				if (empty($_POST))
 				{
-					$body = $_GET; unset($body['callback']);
-				}
+					parse_str(file_get_contents("php://input"), $body);
+					if (empty($body)) $body = $_GET; unset($body['callback']);
+				} else $body = $_POST;
 			}
 			return $body;
 		}
