@@ -199,8 +199,15 @@ namespace
 				if (empty($_POST))
 				{
 					parse_str(file_get_contents("php://input"), $body);
-					if (empty($body)) $body = $_GET; unset($body['callback']);
-				} else $body = $_POST;
+					if (empty($body))
+					{
+						if (empty($body))
+						{
+							$body = $_GET;
+							unset($body['callback']);
+						}
+					}
+				}
 			}
 			return $body;
 		}
