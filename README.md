@@ -1,8 +1,6 @@
 # Simple API
 
-A fast, simple and reliable API microframework for ~~PHP 5.3+~~ PHP 5.4+
-
-> v0.2 will be PHP 5.3+ compatible
+A fast, simple and reliable API microframework for PHP 5.3+
 
 ## Setup
 
